@@ -123,7 +123,6 @@ export default function (pi: ExtensionAPI) {
       return;
     }
 
-    ctx.ui.setStatus("llm-wiki", "🧠 Wiki");
   });
 
   // ─── Layered recall + topic inference hook ──────────
