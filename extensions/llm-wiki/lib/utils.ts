@@ -351,9 +351,35 @@ export function extractWikilinks(content: string): string[] {
   return links;
 }
 
-/** Slugify a title. */
+const ACCENT_MAP: Record<string, string> = {
+  é: "e", è: "e", ê: "e", ë: "e",
+  É: "e", È: "e", Ê: "e", Ë: "e",
+  à: "a", â: "a", ä: "a",
+  À: "a", Â: "a", Ä: "a",
+  ù: "u", û: "u", ü: "u",
+  Ù: "u", Û: "u", Ü: "u",
+  ô: "o", ö: "o",
+  Ô: "o", Ö: "o",
+  î: "i", ï: "i",
+  Î: "i", Ï: "i",
+  ç: "c", Ç: "c",
+};
+
+/** Normalize French accented characters to ASCII base form. */
+export function normalizeAccents(text: string): string {
+  let s = "";
+  for (const ch of text) {
+    s += ACCENT_MAP[ch] ?? ch;
+  }
+  return s;
+}
+
+/** Slugify a title to an ASCII-only filesystem-safe identifier.
+ *  French accented characters are normalized to their ASCII base form.
+ */
 export function slugify(title: string): string {
-  return title
+  const s = normalizeAccents(title);
+  return s
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, "")
     .trim()

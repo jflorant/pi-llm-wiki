@@ -32,7 +32,16 @@ interface UrlExtractArgs {
 }
 
 const DEFAULT_MARKITDOWN_TIMEOUT_MS = 180_000;
+const DEFAULT_PANDOC_TIMEOUT_MS = 120_000;
 const DEFAULT_CURL_TIMEOUT_SECONDS = 30;
+
+const PANDOC_FORMATS: Record<string, string[]> = {
+  odt: [".odt"],
+  docx: [".docx"],
+  pptx: [".pptx"],
+  rtf: [".rtf"],
+  epub: [".epub"],
+};
 
 const FILE_EXTRACTORS: FileExtractor[] = [
   {
@@ -56,7 +65,12 @@ const FILE_EXTRACTORS: FileExtractor[] = [
     matches: hasExtension(".json"),
     extract: ({ content }) => jsonToMarkdown(content),
   },
-  textFileExtractor("docx", [".docx"]),
+  ...Object.entries(PANDOC_FORMATS).map(([format, extensions]) => ({
+    format,
+    shouldReadText: false,
+    matches: hasAnyExtension(extensions),
+    extract: ({ pi, filePath, signal }: FileExtractArgs) => extractWithPandoc(pi, filePath, signal),
+  })),
   textFileExtractor("file", []),
 ];
 
@@ -91,6 +105,10 @@ export function pdfExtractionFailureMessage(source: string): string {
   return `_PDF content could not be converted to markdown from ${source}. Try increasing WIKI_MARKITDOWN_TIMEOUT_MS._\n`;
 }
 
+export function pandocExtractionFailureMessage(source: string): string {
+  return `_Office document content could not be converted to markdown from ${source}. Install pandoc (apt install pandoc) or increase WIKI_PANDOC_TIMEOUT_MS._\n`;
+}
+
 function textFileExtractor(format: string, extensions: string[]): FileExtractor {
   return {
     format,
@@ -111,6 +129,40 @@ function hasAnyExtension(extensions: string[]): (path: string) => boolean {
 async function extractPdf(pi: ExtensionAPI, source: string, signal?: AbortSignal): Promise<string> {
   const extracted = await extractWithMarkItDown(pi, source, signal);
   return extracted || pdfExtractionFailureMessage(source);
+}
+
+async function extractWithPandoc(
+  pi: ExtensionAPI,
+  source: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  if (!(await hasPandoc(pi, signal))) return pandocExtractionFailureMessage(source);
+
+  try {
+    const result = await exec(
+      pi,
+      "pandoc",
+      [source, "-t", "markdown", "--wrap=none"],
+      { signal, timeout: pandocTimeoutMs() },
+    );
+    return result.stdout.trim() ? result.stdout : pandocExtractionFailureMessage(source);
+  } catch {
+    return pandocExtractionFailureMessage(source);
+  }
+}
+
+async function hasPandoc(pi: ExtensionAPI, signal?: AbortSignal): Promise<boolean> {
+  const check = await exec(
+    pi,
+    "sh",
+    ["-c", `which pandoc >/dev/null 2>&1 && echo "yes" || echo "no"`],
+    { signal },
+  );
+  return check.stdout.trim() === "yes";
+}
+
+function pandocTimeoutMs(): number {
+  return positiveIntegerFromEnv("WIKI_PANDOC_TIMEOUT_MS", DEFAULT_PANDOC_TIMEOUT_MS);
 }
 
 async function extractPdfUrl(

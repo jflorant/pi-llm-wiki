@@ -3,7 +3,7 @@ import { join } from "node:path";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { appendEvent, rebuildMetadataLight } from "./metadata.js";
-import { type VaultPaths, fmtDate, resolveVaultPaths } from "./utils.js";
+import { type VaultPaths, fmtDate, normalizeAccents, resolveVaultPaths } from "./utils.js";
 
 // ─── Types ─────────────────────────────────────────────
 
@@ -49,7 +49,7 @@ export function saveObservation(paths: VaultPaths, input: ObservationInput): Obs
   const timestamp = new Date().toISOString();
 
   // Generate a slug from title
-  const slugBase = input.title
+  const slugBase = normalizeAccents(input.title)
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")

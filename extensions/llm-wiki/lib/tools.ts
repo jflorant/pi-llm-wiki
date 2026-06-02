@@ -67,6 +67,7 @@ export function registerWikiBootstrap(pi: ExtensionAPI): void {
       const config = {
         name: params.topic,
         mode,
+        language,
         topic: params.topic,
         created: fmtDate(),
         version: "1.0",
@@ -390,12 +391,7 @@ export function registerWikiEnsurePage(pi: ExtensionAPI): void {
       }
 
       const type = params.type as "entity" | "concept" | "synthesis" | "analysis";
-      const slug = params.title
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, "")
-        .trim()
-        .replace(/\s+/g, "-")
-        .slice(0, 80);
+      const slug = slugify(params.title);
 
       const folderMap: Record<string, string> = {
         entity: "entities",
@@ -608,13 +604,14 @@ export function registerWikiLint(pi: ExtensionAPI): void {
       let contradictions = 0;
       const gaps: Array<{ topic: string; mentionedBy: string[] }> = [];
 
-      const allPageIds = new Set(pages.map((p) => p.relative));
+      const resolver = buildWikilinkResolver(registry);
       const linkCounts: Record<string, number> = {};
 
       for (const page of pages) {
         const links = extractWikilinks(page.content);
         for (const link of links) {
-          if (!allPageIds.has(link)) {
+          const resolved = resolveWikilink(resolver, link);
+          if (!resolved) {
             missingPages++;
             findings.push(`Missing page: [[${link}]] (in [[${page.relative}]])`);
             const existing = gaps.find((g) => g.topic === link);
@@ -625,7 +622,7 @@ export function registerWikiLint(pi: ExtensionAPI): void {
               gaps.push({ topic: link, mentionedBy: [page.relative] });
             }
           } else {
-            linkCounts[link] = (linkCounts[link] || 0) + 1;
+            linkCounts[resolved] = (linkCounts[resolved] || 0) + 1;
           }
         }
       }
@@ -785,6 +782,7 @@ export function registerWikiStatus(pi: ExtensionAPI): void {
         "══════════════════",
         `Topic: ${config.topic || "Unknown"}`,
         `Mode: ${config.mode || "personal"}`,
+        `Language: ${config.language || "fr"}`,
         `Pages: ${Object.keys(registry.pages).length}`,
         ...Object.entries(byType).map(([t, c]) => `  - ${t}s: ${c}`),
         `Orphans: ${orphanCount}`,

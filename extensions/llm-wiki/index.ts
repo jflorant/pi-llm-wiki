@@ -98,6 +98,7 @@ export default function (pi: ExtensionAPI) {
       writeJson(join(vaultPaths.dotWiki, "config.json"), {
         name: "pending",
         mode: "personal",
+        language: "fr",
         topic: "pending",
         created: fmtDate(),
         version: "1.0",

@@ -5,9 +5,11 @@ import {
   extractWikilinks,
   findWikiPages,
   fmtDate,
+  normalizeAccents,
   parseFrontmatter,
   readJson,
   readText,
+  slugify,
   writeJson,
 } from "./utils.js";
 
@@ -105,6 +107,87 @@ export function buildRegistry(paths: VaultPaths): Registry {
   };
 }
 
+/** Build a lookup map from wikilink text → page path (registry key).
+ *  Stores page path under multiple derived forms of each candidate name
+ *  (exact, lowercase, slugified, hyphen-slugified) for flexible resolution.
+ */
+export function buildWikilinkResolver(registry: Registry): Map<string, string> {
+  const resolver = new Map<string, string>();
+
+  for (const [pagePath, entry] of Object.entries(registry.pages)) {
+    const folder = pagePath.includes("/") ? pagePath.split("/")[0] : "";
+    const filename = pagePath.includes("/") ? pagePath.split("/").pop()! : pagePath;
+
+    // Collect all text candidates that should resolve to this page
+    const candidates: string[] = [pagePath, filename, entry.title || ""];
+
+    // Aliases from frontmatter (handle both array and string forms)
+    const rawAliases = entry.aliases;
+    if (Array.isArray(rawAliases)) {
+      for (const a of rawAliases) candidates.push(String(a));
+    } else if (typeof rawAliases === "string") {
+      try {
+        const parsed = JSON.parse((rawAliases as string).replace(/'/g, '"'));
+        if (Array.isArray(parsed)) for (const a of parsed) candidates.push(String(a).trim());
+      } catch {
+        // Try comma-separated
+        const parts = (rawAliases as string).replace(/[\[\]]/g, "").split(",");
+        for (const p of parts) candidates.push(p.trim());
+      }
+    }
+
+    for (const candidate of candidates) {
+      if (!candidate || typeof candidate !== "string" || !candidate.trim()) continue;
+      const trimmed = candidate.trim();
+
+      // Store all lookup-friendly forms
+      const forms: string[] = [trimmed, trimmed.toLowerCase(), slugify(trimmed)];
+
+      // Hyphen slug variant: accent-normalized then non-alnum → hyphen
+      const hyphenForm = normalizeAccents(trimmed.toLowerCase())
+        .replace(/[^a-z0-9\s-]/g, "-")
+        .replace(/[\s-]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 80);
+      if (hyphenForm) forms.push(hyphenForm);
+
+      for (const form of forms) {
+        if (!form) continue;
+        resolver.set(form, pagePath);
+        if (folder) resolver.set(`${folder}/${form}`, pagePath);
+      }
+    }
+  }
+
+  return resolver;
+}
+
+/** Resolve a wikilink text against the resolver, trying multiple strategies. */
+export function resolveWikilink(resolver: Map<string, string>, link: string): string | undefined {
+  if (!link) return undefined;
+
+  const lower = link.toLowerCase();
+
+  // Slug via slugify (normalizes French accents, strips remaining non-alnum)
+  const slug = slugify(link);
+
+  // Hyphen-slug: normalize accents, replace remaining non-alnum with hyphen,
+  // collapse spaces and hyphens
+  const hyphenForm = normalizeAccents(link.toLowerCase())
+    .replace(/[^a-z0-9\s-]/g, "-")
+    .replace(/[\s-]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 80);
+
+  const strategies: string[] = [link, lower, slug, hyphenForm];
+  for (const s of strategies) {
+    if (!s) continue;
+    const result = resolver.get(s);
+    if (result) return result;
+  }
+  return undefined;
+}
+
 /** Build backlinks map from all wiki pages. */
 export function buildBacklinks(paths: VaultPaths, registry: Registry): Backlinks {
   const inbound: Backlinks = {};
@@ -114,12 +197,16 @@ export function buildBacklinks(paths: VaultPaths, registry: Registry): Backlinks
     inbound[id] = [];
   }
 
+  // Build wikilink resolver
+  const resolver = buildWikilinkResolver(registry);
+
   // Count inbound links
   for (const page of findWikiPages(paths.wiki)) {
     const links = extractWikilinks(page.content);
     for (const link of links) {
-      if (inbound[link] && !inbound[link].includes(page.relative)) {
-        inbound[link].push(page.relative);
+      const resolved = resolveWikilink(resolver, link);
+      if (resolved && inbound[resolved] && !inbound[resolved].includes(page.relative)) {
+        inbound[resolved].push(page.relative);
       }
     }
   }
