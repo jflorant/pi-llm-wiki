@@ -48,8 +48,6 @@ export function registerWikiBootstrap(pi: ExtensionAPI): void {
     description:
       "Initialize a new LLM Wiki vault with the 4-layer architecture. " +
       "Creates config, templates, schema, and metadata scaffolding.",
-    promptSnippet: "Initialize a new LLM Wiki vault",
-    promptGuidelines: ["Use wiki_bootstrap when the user wants to start a new wiki."],
     parameters: Type.Object({
       topic: Type.String({ description: "Main topic of the wiki" }),
       mode: Type.Optional(Type.String({ description: "personal or company (default: personal)" })),
@@ -150,10 +148,6 @@ export function registerWikiCaptureSource(pi: ExtensionAPI): void {
     description:
       "Capture a URL, local file, or pasted text into an immutable source packet and skeleton source page.",
     promptSnippet: "Capture a source into the wiki as an immutable packet",
-    promptGuidelines: [
-      "Use wiki_capture_source when the user provides a URL, file, or text to capture.",
-      "After capture, read the extracted text and update the skeleton source page.",
-    ],
     parameters: Type.Object({
       url: Type.Optional(Type.String({ description: "URL to capture" })),
       file_path: Type.Optional(Type.String({ description: "Local file path to capture" })),
@@ -228,11 +222,6 @@ export function registerWikiIngest(pi: ExtensionAPI): void {
     description:
       "Process uningested source packets. Returns a batch of source IDs with extracted content for the LLM to synthesize.",
     promptSnippet: "Ingest source packets: get batch of sources needing synthesis",
-    promptGuidelines: [
-      "Use wiki_ingest when the user wants to process captured sources.",
-      "After calling this tool, read each source's extracted.md, update its source page, create entity/concept pages, and cross-reference.",
-      "The extension auto-updates metadata — you do NOT need to edit meta/ files.",
-    ],
     parameters: Type.Object({
       source_id: Type.Optional(
         Type.String({ description: "Specific source ID to ingest. Leave empty for all new." }),
@@ -366,10 +355,6 @@ export function registerWikiEnsurePage(pi: ExtensionAPI): void {
     label: "Wiki Ensure Page",
     description: "Resolve or safely create a canonical wiki page. Returns the page path.",
     promptSnippet: "Create a canonical wiki page if it doesn't exist",
-    promptGuidelines: [
-      "Use wiki_ensure_page before creating pages to avoid duplicates.",
-      "Search existing pages first with wiki_search.",
-    ],
     parameters: Type.Object({
       type: Type.String({
         description: "Page type: entity | concept | synthesis | analysis | requirement",
@@ -515,7 +500,6 @@ export function registerWikiSearch(pi: ExtensionAPI): void {
     label: "Wiki Search",
     description: "Search the wiki registry for pages matching a query.",
     promptSnippet: "Search the wiki registry for pages",
-    promptGuidelines: ["Use wiki_search to find existing pages before creating duplicates."],
     parameters: Type.Object({
       query: Type.String({ description: "Search term" }),
       type: Type.Optional(Type.String({ description: "Filter by page type" })),
@@ -573,11 +557,6 @@ export function registerWikiLint(pi: ExtensionAPI): void {
     label: "Wiki Lint",
     description:
       "Health check the wiki. Scans for orphans, missing pages, contradictions, gaps. Optionally auto-fixes.",
-    promptSnippet: "Lint the wiki for health issues",
-    promptGuidelines: [
-      "Use wiki_lint when the user asks to check wiki health.",
-      "Contradictions always need human review.",
-    ],
     parameters: Type.Object({
       auto_fix: Type.Optional(
         Type.Boolean({ description: "Auto-fix orphans and missing pages", default: false }),
@@ -736,8 +715,6 @@ export function registerWikiStatus(pi: ExtensionAPI): void {
     name: "wiki_status",
     label: "Wiki Status",
     description: "Report wiki health and stats instantly from generated registry.",
-    promptSnippet: "Report wiki health and stats",
-    promptGuidelines: ["Use wiki_status for a quick overview."],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const paths = getPaths(ctx.cwd);
@@ -814,8 +791,6 @@ export function registerWikiRebuildMeta(pi: ExtensionAPI): void {
     name: "wiki_rebuild_meta",
     label: "Wiki Rebuild Meta",
     description: "Force a full metadata rebuild (registry, backlinks, index, log).",
-    promptSnippet: "Rebuild all wiki metadata",
-    promptGuidelines: ["Use wiki_rebuild_meta if metadata seems out of sync."],
     parameters: Type.Object({}),
     async execute(_toolCallId, _params, _signal, _onUpdate, ctx) {
       const paths = getPaths(ctx.cwd);
@@ -857,8 +832,6 @@ export function registerWikiLogEvent(pi: ExtensionAPI): void {
     name: "wiki_log_event",
     label: "Wiki Log Event",
     description: "Append a structured event to meta/events.jsonl and regenerate meta/log.md.",
-    promptSnippet: "Log an event to the wiki activity log",
-    promptGuidelines: ["Use wiki_log_event to record significant actions manually."],
     parameters: Type.Object({
       kind: Type.String({ description: "Event kind (e.g., ingest, query, decision)" }),
       details: Type.Optional(Type.Object({}, { description: "Additional event fields" })),
@@ -896,10 +869,6 @@ export function registerWikiWatch(pi: ExtensionAPI): void {
     name: "wiki_watch",
     label: "Wiki Watch",
     description: "Schedule automatic wiki updates (discover → ingest → lint) via pi's cron system.",
-    promptSnippet: "Schedule auto-updates for the wiki",
-    promptGuidelines: [
-      "Use wiki_watch when the user wants the wiki to stay current automatically.",
-    ],
     parameters: Type.Object({
       interval: Type.String({ description: "daily, weekly, hourly, or stop" }),
     }),

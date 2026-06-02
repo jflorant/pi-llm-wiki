@@ -95,11 +95,6 @@ export function registerWikiRetro(pi: ExtensionAPI): void {
       "Creates a source packet and source page. The insight will be " +
       "surfaced automatically by wiki_recall in future sessions.",
     promptSnippet: "Save atomic insights from completed tasks into the wiki",
-    promptGuidelines: [
-      "Use wiki_retro at the END of every meaningful task to save what you learned.",
-      "Write atomic insights — one insight per call. Use multiple calls for multiple insights.",
-      "The insight will be auto-surfaced by wiki_recall in future sessions.",
-    ],
     parameters: Type.Object({
       slug: Type.String({
         description:

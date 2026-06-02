@@ -549,10 +549,6 @@ export function registerWikiRecall(pi: ExtensionAPI): void {
       "Returns matching page IDs, titles, types, and content previews. " +
       "Called automatically at session start — use explicitly to dig deeper.",
     promptSnippet: "Recall wiki knowledge relevant to the current task",
-    promptGuidelines: [
-      "Use wiki_recall at the START of every task to find relevant wiki knowledge.",
-      "The extension auto-calls wiki_recall — but calling it explicitly with specific terms gets better results.",
-    ],
     parameters: Type.Object({
       query: Type.String({
         description: "Search query — use the user's full request or key terms",

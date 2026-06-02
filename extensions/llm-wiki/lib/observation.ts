@@ -150,12 +150,6 @@ export function registerWikiObserve(pi: ExtensionAPI, reminderState?: ReminderSt
       "Call this proactively after non-trivial work — every observation " +
       "compounds the wiki's knowledge across sessions.",
     promptSnippet: "Record an observation about the current work",
-    promptGuidelines: [
-      "Call wiki_observe after non-trivial decisions, discoveries, or completions.",
-      "One observation per call. Use multiple calls for multiple observations.",
-      "Rate relevance honestly — most observations are medium or low, not critical.",
-      "Observations compound across sessions via wiki_recail.",
-    ],
     parameters: Type.Object({
       title: Type.String({
         description:
